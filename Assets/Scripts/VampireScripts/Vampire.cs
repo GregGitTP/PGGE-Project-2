@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Patterns;
 using PGGE;
+using Photon.Pun;
 
 public class Vampire : MonoBehaviour
 {
@@ -30,6 +31,7 @@ public class Vampire : MonoBehaviour
 
     FSM fsm = new FSM();
     State moveState, attackState, reloadState;
+    PhotonView photonView;
 
     private void Start(){
         moveState = new VampireMovementState(fsm, /*joystick,*/ camera, player, this, cc, anim, movementSpeed, rotationSpeed, runMultiplier, gravity, jumpForce, xOffset, yOffset, zOffset);
@@ -43,9 +45,23 @@ public class Vampire : MonoBehaviour
         fsm.Add(2, reloadState);
 
         fsm.SetCurrentState(moveState);
+
+        photonView = GetComponent<PhotonView>();
     }
 
     private void Update(){
+        if(photonView == null){
+            Update_Personal();
+            return;
+        }
+        else{
+            if(photonView.IsMine){
+                Update_Personal();
+            }
+        }
+    }
+
+    private void Update_Personal(){
         GameConstants.pForward = player.forward;
 
         if(fsm.GetCurrentState() != fsm.GetState(2)){
@@ -59,10 +75,26 @@ public class Vampire : MonoBehaviour
     }
 
     private void FixedUpdate(){
-        fsm.FixedUpdate();
+        if(photonView == null){
+            fsm.FixedUpdate();
+            return;
+        }
+        else{
+            if(photonView.IsMine){
+                fsm.FixedUpdate();
+            }
+        }
     }
 
     private void LateUpdate(){
-        fsm.LateUpdate();
+        if(photonView == null){
+            fsm.LateUpdate();
+            return;
+        }
+        else{
+            if(photonView.IsMine){
+                fsm.LateUpdate();
+            }
+        }
     }
 }

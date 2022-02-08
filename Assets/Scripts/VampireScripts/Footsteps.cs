@@ -29,6 +29,6 @@ public class Footsteps : MonoBehaviour
             else if(matName == "Sand") return sandSteps;
             else return concreteSteps;
         }
-        return null;
+        return woodSteps;
     }
 }
