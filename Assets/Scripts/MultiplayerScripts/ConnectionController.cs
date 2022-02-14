@@ -9,8 +9,8 @@ public class ConnectionController : MonoBehaviourPunCallbacks
     GameManager gm;
     LobbyUI lobbyUI;
 
-    enum Intent{Create, Join, Random, RoomList};
-    Intent intent;
+    enum Intent{None, Create, Join, Random, RoomList};
+    Intent intent = Intent.None;
 
     bool isConnecting;
     string roomName = "";
@@ -22,6 +22,7 @@ public class ConnectionController : MonoBehaviourPunCallbacks
     private void Start(){
         gm = FindObjectOfType<GameManager>();
         lobbyUI = GetComponent<LobbyUI>();
+        isConnecting = PhotonNetwork.ConnectUsingSettings();
     }
 
     public void ConnectCreate(string _roomName, string name){
@@ -70,10 +71,11 @@ public class ConnectionController : MonoBehaviourPunCallbacks
         }
     }
 
-    public void ConnectFromRoomList(string name, string roomName){
+    public void ConnectFromRoomList(string name, string _roomName){
         intent = Intent.RoomList;
         PhotonNetwork.NickName = name;
         PhotonNetwork.GameVersion = Application.version;
+        roomName = _roomName;
 
         if(PhotonNetwork.IsConnected){
             PhotonNetwork.JoinOrCreateRoom(
@@ -91,7 +93,10 @@ public class ConnectionController : MonoBehaviourPunCallbacks
 
     public override void OnConnectedToMaster(){
         if(isConnecting){
-            if(intent == Intent.Create){
+            if(intent == Intent.None){
+                PhotonNetwork.JoinLobby();
+            }
+            else if(intent == Intent.Create){
                 PhotonNetwork.CreateRoom(
                     roomName,
                     new RoomOptions(){
@@ -115,6 +120,10 @@ public class ConnectionController : MonoBehaviourPunCallbacks
                 );
             }
         }
+    }
+
+    public override void OnRoomListUpdate(List<RoomInfo> roomList){
+        lobbyUI.UpdateRoomList(roomList);
     }
 
     public override void OnCreateRoomFailed(short returnCode, string message){

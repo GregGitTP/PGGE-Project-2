@@ -167,6 +167,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3fc6632268beef44cb959d589bb4bbe6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Rooms: []
   buttonClick: {fileID: 8300000, guid: 43edb27fb1050f14993e70e1b146bf29, type: 3}
 --- !u!82 &1520136297
 AudioSource:

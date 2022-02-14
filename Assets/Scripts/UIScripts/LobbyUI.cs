@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using UnityEngine.EventSystems;
+using Photon.Realtime;
 
 public class LobbyUI : MonoBehaviour
 {
@@ -54,6 +56,23 @@ public class LobbyUI : MonoBehaviour
     [SerializeField]
     Button JoinRdmBtn;
 
+    // Room List UI
+    [SerializeField]
+    GameObject RoomListing;
+    [SerializeField]
+    Text SelectedRoomTxt;
+    [SerializeField]
+    Text RoomListErrorTxt;
+    [SerializeField]
+    InputField RoomListNickName;
+    [SerializeField]
+    Button JoinRoomListBtn;
+
+    [SerializeField]
+    Transform RoomListingContent;
+    [SerializeField]
+    GameObject RoomPrefab;
+
     // Back Buttons
     [SerializeField]
     Button BackToMenuBtn;
@@ -67,12 +86,21 @@ public class LobbyUI : MonoBehaviour
 
     ConnectionController cc;
 
+    [SerializeField]
+    List<GameObject> FixedRooms;
+
+    List<GameObject> roomListing;
+
+    string rlRoomName;
+
     private void Start(){
         StartUI();
 
         cc = GetComponent<ConnectionController>();
 
         gm = FindObjectOfType<GameManager>();
+
+        roomListing = new List<GameObject>();
 
         // Option page navigation buttons
         CreateRoomBtn.onClick.AddListener(
@@ -119,6 +147,12 @@ public class LobbyUI : MonoBehaviour
                 OnClickJoinRdm();
             }
         );
+        JoinRoomListBtn.onClick.AddListener(
+            delegate{
+                gm.ButtonSoundEffect();
+                OnClickJoinFromRoomList();
+            }
+        );
 
         // Back button actions
         BackToMenuBtn.onClick.AddListener(
@@ -133,6 +167,13 @@ public class LobbyUI : MonoBehaviour
                 OnClickBackToOptions();
             }
         );
+    }
+
+    public void OnClickRoomFromRoomList(){
+        GameObject selectedRoom = EventSystem.current.currentSelectedGameObject;
+        GameObject selectedRoomName = selectedRoom.transform.Find("Name").gameObject;
+        rlRoomName = selectedRoomName.GetComponent<Text>().text;
+        SelectedRoomTxt.text = "Selected Room: " + rlRoomName;
     }
 
     private void StartUI(){
@@ -168,6 +209,15 @@ public class LobbyUI : MonoBehaviour
 
         JoinRdmNickName.text = "";
 
+        RoomListing.SetActive(true);
+        SelectedRoomTxt.gameObject.SetActive(true);
+        RoomListErrorTxt.gameObject.SetActive(false);
+        RoomListNickName.gameObject.SetActive(true);
+        JoinRoomListBtn.gameObject.SetActive(true);
+
+        SelectedRoomTxt.text = "Selected Room: ";
+        RoomListNickName.text = "";
+
         BackToMenuBtn.gameObject.SetActive(false);
         BackToOptionsBtn.gameObject.SetActive(false);
 
@@ -178,6 +228,8 @@ public class LobbyUI : MonoBehaviour
         JoinRoomPanel.SetActive(false);
         JoinRdmRoomPanel.SetActive(false);
         RoomListPanel.SetActive(false);
+        
+        rlRoomName = null;
     }
 
     // Option page navigation button functions
@@ -229,7 +281,6 @@ public class LobbyUI : MonoBehaviour
     }
 
     private void OnClickJoinRdm(){
-        Debug.Log("Clicked Join Random");
         JoinRdmNickName.gameObject.SetActive(false);
         JoinRdmBtn.gameObject.SetActive(false);
         
@@ -238,8 +289,21 @@ public class LobbyUI : MonoBehaviour
         cc.ConnectRandom(JoinRdmNickName.text);
     }
 
-    public void OnClickJoinFromRoomList(){
-        
+    private void OnClickJoinFromRoomList(){
+        if(rlRoomName == null){
+            RoomListErrorTxt.gameObject.SetActive(true);
+            return;
+        }
+
+        RoomListing.SetActive(false);
+        SelectedRoomTxt.gameObject.SetActive(false);
+        RoomListErrorTxt.gameObject.SetActive(false);
+        RoomListNickName.gameObject.SetActive(false);
+        JoinRoomListBtn.gameObject.SetActive(false);
+
+        ConnectingTxt.gameObject.SetActive(true);
+
+        cc.ConnectFromRoomList(RoomListNickName.text, rlRoomName);
     }
 
     // Back button action functions
@@ -262,5 +326,70 @@ public class LobbyUI : MonoBehaviour
     public void JoinFail(){
         OnClickJoinRoom();
         JoinFailTxt.gameObject.SetActive(true);
+    }
+
+    // Room List update fucntions
+    public void UpdateRoomList(List<RoomInfo> roomList){
+        if(!RoomListPanel.active){
+            StartCoroutine(DelayCor(roomList));
+            return;
+        }
+        foreach(RoomInfo info in roomList){
+            if(!info.Name.Contains("Fixed Room")){
+                if(info.RemovedFromList){
+                    foreach(GameObject room in roomListing){
+                        if(info.Name == room.GetComponent<RoomListUI>().GetName()){
+                            Destroy(room);
+                            roomListing.Remove(room);
+                            break;
+                        }
+                    }
+                }
+                else{
+                    List<string> names = new List<string>();
+                    foreach(GameObject existingRoom in roomListing){
+                        names.Add(existingRoom.GetComponent<RoomListUI>().GetName());
+                    }
+                    if(!names.Contains(info.Name)){
+                        GameObject room = Instantiate(RoomPrefab, RoomListingContent);
+                        roomListing.Add(room);
+                        room.GetComponent<RoomListUI>().SetName(info.Name);
+                    }
+                }
+            }
+        }
+        UpdateRoomSpace(roomList);
+    }
+
+    private IEnumerator DelayCor(List<RoomInfo> roomList){
+        yield return new WaitForSeconds(.5f);
+        UpdateRoomList(roomList);
+        yield break;
+    }
+
+    private void UpdateRoomSpace(List<RoomInfo> roomList){
+        foreach(GameObject fixedRoom in FixedRooms){
+            RoomListUI fixedRoomScript = fixedRoom.GetComponent<RoomListUI>();
+            fixedRoomScript.SetPlayerCount(0);
+        }
+        foreach(RoomInfo info in roomList){
+            if(info.Name.Contains("Fixed Room")){
+                foreach(GameObject fixedRoom in FixedRooms){
+                    RoomListUI fixedRoomScript = fixedRoom.GetComponent<RoomListUI>();
+                    if(info.Name == fixedRoomScript.GetName()){
+                        fixedRoomScript.SetPlayerCount(info.PlayerCount);
+                        break;
+                    }
+                }
+            }
+            else{
+                foreach(GameObject room in roomListing){
+                    RoomListUI roomScript = room.GetComponent<RoomListUI>();
+                    if(info.Name == roomScript.GetName()){
+                        roomScript.SetPlayerCount(info.PlayerCount);
+                    }
+                }
+            }
+        }
     }
 }
