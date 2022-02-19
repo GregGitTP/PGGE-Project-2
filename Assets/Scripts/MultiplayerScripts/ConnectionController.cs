@@ -9,6 +9,8 @@ public class ConnectionController : MonoBehaviourPunCallbacks
     GameManager gm;
     LobbyUI lobbyUI;
 
+    // Variables to keep track of what actions to perform
+    // after the connection has been made to photon servers
     enum Intent{None, Create, Join, Random, RoomList};
     Intent intent = Intent.None;
 
@@ -25,6 +27,8 @@ public class ConnectionController : MonoBehaviourPunCallbacks
         isConnecting = PhotonNetwork.ConnectUsingSettings();
     }
 
+    // Function for creating a new room with the room name provided
+    // and allowing the player to join the newly created room
     public void ConnectCreate(string _roomName, string name){
         intent = Intent.Create;
         PhotonNetwork.NickName = name;
@@ -44,6 +48,7 @@ public class ConnectionController : MonoBehaviourPunCallbacks
         }
     }
 
+    // Function for joining a room by the room name provided
     public void Connect(string _roomName, string name){
         intent = Intent.Join;
         PhotonNetwork.NickName = name;
@@ -58,6 +63,7 @@ public class ConnectionController : MonoBehaviourPunCallbacks
         }
     }
 
+    // Function for joining a random room in the photon room list
     public void ConnectRandom(string name){
         intent = Intent.Random;
         PhotonNetwork.NickName = name;
@@ -71,6 +77,7 @@ public class ConnectionController : MonoBehaviourPunCallbacks
         }
     }
 
+    // Function for joining a room from the room list UI
     public void ConnectFromRoomList(string name, string _roomName){
         intent = Intent.RoomList;
         PhotonNetwork.NickName = name;
@@ -91,6 +98,7 @@ public class ConnectionController : MonoBehaviourPunCallbacks
         }
     }
 
+    // Callback function upon making connection
     public override void OnConnectedToMaster(){
         if(isConnecting){
             if(intent == Intent.None){
@@ -123,18 +131,27 @@ public class ConnectionController : MonoBehaviourPunCallbacks
     }
 
     public override void OnRoomListUpdate(List<RoomInfo> roomList){
+
+        // Calling the respective callback function in the LobbyUI script
         lobbyUI.UpdateRoomList(roomList);
     }
 
     public override void OnCreateRoomFailed(short returnCode, string message){
+
+        // Calling the respective callback function in the LobbyUI script
         lobbyUI.CreateFail();
     }
 
     public override void OnJoinRoomFailed(short returnCode, string message){
+
+        // Calling the respective callback function in the LobbyUI script
         lobbyUI.JoinFail();
     }
 
     public override void OnJoinRandomFailed(short returnCode, string message){
+
+        // Creating a new room if there are
+        // no rooms available for random joining
         PhotonNetwork.CreateRoom(
             null,
             new RoomOptions(){

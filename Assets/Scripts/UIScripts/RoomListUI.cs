@@ -30,6 +30,8 @@ public class RoomListUI : MonoBehaviour
         name.GetComponent<Text>().text = _name;
     }
 
+    // Function for setting the player count of the
+    // room list object
     public void SetPlayerCount(int count){
         if(count >= 4){
             thisBtn.interactable = false;
